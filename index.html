@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitHub - 月別ダイエット総合管理アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-emerald-500 text-white p-2 rounded-xl shadow-md">
+                        <i data-lucide="activity" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                        FitHub Log
+                    </span>
+                </div>
+
+                <!-- Google Health Sync Status -->
+                <div class="flex items-center space-x-3">
+                    <button id="sync-health-btn" onclick="syncGoogleHealth()" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-600" id="sync-icon"></i>
+                        <span id="sync-status">Google Health 連携</span>
+                    </button>
+                    <button onclick="openModal('add-log-modal')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition flex items-center space-x-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>記録を追加</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Month Selector & Summary Row -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-4">
+                <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg transition text-slate-600">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <h2 id="current-month-display" class="text-2xl font-bold text-slate-800">2026年 10月</h2>
+                <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg transition text-slate-600">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Monthly Quick Stats -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-[110px]">
+                    <span class="text-xs text-slate-500 font-medium block">平均歩数</span>
+                    <span id="stat-avg-steps" class="text-lg font-bold text-slate-700">-- 歩</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-[110px]">
+                    <span class="text-xs text-slate-500 font-medium block">平均体重</span>
+                    <span id="stat-avg-weight" class="text-lg font-bold text-slate-700">-- kg</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-[110px]">
+                    <span class="text-xs font-medium text-amber-600 block">あすけん記録</span>
+                    <span id="stat-food-count" class="text-lg font-bold text-amber-700">0 日</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-[110px]">
+                    <span class="text-xs font-medium text-indigo-600 block">筋トレ記録</span>
+                    <span id="stat-workout-count" class="text-lg font-bold text-indigo-700">0 日</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Graph Overview -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Weight Chart Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center space-x-2">
+                    <i data-lucide="scale" class="w-4 h-4 text-emerald-600"></i>
+                    <span>今月の体重推移 (kg)</span>
+                </h3>
+                <div class="h-56 w-full">
+                    <canvas id="weightChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Steps Chart Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center space-x-2">
+                    <i data-lucide="footprints" class="w-4 h-4 text-teal-600"></i>
+                    <span>今月の歩数推移 (歩)</span>
+                </h3>
+                <div class="h-56 w-full">
+                    <canvas id="stepsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs View Section Header & View Selector -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-200">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                <i data-lucide="calendar" class="w-5 h-5 text-emerald-600"></i>
+                <span>記録リスト</span>
+            </h3>
+            
+            <!-- View Mode Switcher (Month / Week / Day) -->
+            <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs font-semibold text-slate-600">
+                <button id="view-btn-month" onclick="setViewMode('month')" class="px-3 py-1.5 rounded-lg transition bg-white text-slate-800 shadow-sm">
+                    月表示
+                </button>
+                <button id="view-btn-week" onclick="setViewMode('week')" class="px-3 py-1.5 rounded-lg transition hover:text-slate-800">
+                    週表示
+                </button>
+                <button id="view-btn-day" onclick="setViewMode('day')" class="px-3 py-1.5 rounded-lg transition hover:text-slate-800">
+                    日表示
+                </button>
+            </div>
+        </div>
+
+        <!-- Daily Logs Cards Grid/Timeline -->
+        <div id="logs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic Content populated by JS -->
+        </div>
+
+    </main>
+
+    <!-- Modal: Add / Edit Daily Log -->
+    <div id="add-log-modal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden my-8">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">今日の記録を追加 / 編集</h3>
+                <button onclick="closeModal('add-log-modal')" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <form id="log-form" onsubmit="saveLog(event)" class="p-6 space-y-4">
+                <!-- Date input -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">日付</label>
+                    <input type="date" id="form-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+
+                <!-- Google Health Block -->
+                <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-800 uppercase flex items-center space-x-1">
+                            <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i>
+                            <span>Google Health データ</span>
+                        </span>
+                        <button type="button" onclick="fillMockHealthData()" class="text-xs bg-emerald-200 text-emerald-800 hover:bg-emerald-300 px-2 py-1 rounded font-medium">
+                            自動取得テスト
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">歩数 (歩)</label>
+                            <input type="number" id="form-steps" placeholder="7500" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">体重 (kg)</label>
+                            <input type="number" step="0.1" id="form-weight" placeholder="65.0" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asuken Upload -->
+                <div class="border border-slate-200 p-4 rounded-xl space-y-2">
+                    <label class="block text-xs font-bold text-amber-800 uppercase flex items-center space-x-1">
+                        <i data-lucide="utensils" class="w-4 h-4 text-amber-600"></i>
+                        <span>あすけん（食事スクショ）</span>
+                    </label>
+                    <input type="file" id="form-asuken-file" accept="image/*" onchange="previewImage(this, 'asuken-preview')" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200">
+                    <div id="asuken-preview" class="hidden mt-2 relative">
+                        <img src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+                    </div>
+                    <textarea id="form-asuken-memo" placeholder="食事に関するメモ（カロリー、PFCなど）" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs mt-2"></textarea>
+                </div>
+
+                <!-- Workout Memo Upload -->
+                <div class="border border-slate-200 p-4 rounded-xl space-y-2">
+                    <label class="block text-xs font-bold text-indigo-800 uppercase flex items-center space-x-1">
+                        <i data-lucide="dumbbell" class="w-4 h-4 text-indigo-600"></i>
+                        <span>筋トレメモ（スクショ）</span>
+                    </label>
+                    <input type="file" id="form-workout-file" accept="image/*" onchange="previewImage(this, 'workout-preview')" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200">
+                    <div id="workout-preview" class="hidden mt-2 relative">
+                        <img src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+                    </div>
+                    <textarea id="form-workout-memo" placeholder="トレーニング内容・部位のメモ" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs mt-2"></textarea>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('add-log-modal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+                    <button type="submit" class="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Image View Modal -->
+    <div id="image-view-modal" class="fixed inset-0 z-50 hidden bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeModal('image-view-modal')">
+        <div class="max-w-3xl max-h-[90vh] overflow-hidden rounded-xl bg-black">
+            <img id="enlarged-image" src="" class="max-w-full max-h-[90vh] object-contain">
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let currentDate = new Date();
+        let currentViewMode = 'month'; // 'month', 'week', 'day'
+        let selectedDayStr = new Date().toISOString().split('T')[0];
+        let logsData = {}; // Key: YYYY-MM-DD
+        let weightChartInstance = null;
+        let stepsChartInstance = null;
+
+        // Initialize App
+        window.onload = function() {
+            lucide.createIcons();
+            initMockData();
+            updateMonthDisplay();
+            initCharts();
+            renderDashboard();
+            
+            // Set today in form
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('form-date').value = todayStr;
+        };
+
+        // Mock Initial Data for Demonstration
+        function initMockData() {
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+            
+            // Seed sample data for current month
+            const sampleDays = ['01', '03', '05', '08', '10', '12', '15', '18', '20', '22', '25', '28'];
+            sampleDays.forEach((day, index) => {
+                const dateKey = `${currentYear}-${currentMonth}-${day}`;
+                logsData[dateKey] = {
+                    date: dateKey,
+                    steps: 5000 + (index * 600) % 7000,
+                    weight: (68.5 - index * 0.2).toFixed(1),
+                    asukenImg: index % 2 === 0 ? `https://placehold.co/400x300/fef3c7/b45309?text=あすけん+${dateKey}` : null,
+                    asukenMemo: index % 2 === 0 ? `1650 kcal (PFCバランス良好)` : '',
+                    workoutImg: index % 3 === 0 ? `https://placehold.co/400x300/e0e7ff/4338ca?text=筋トレメモ+${dateKey}` : null,
+                    workoutMemo: index % 3 === 0 ? `胸・肩トレ 45分 (ベンチプレス 60kg)` : ''
+                };
+            });
+        }
+
+        // Navigation Month Change
+        function changeMonth(diff) {
+            currentDate.setMonth(currentDate.getMonth() + diff);
+            updateMonthDisplay();
+            renderDashboard();
+        }
+
+        function updateMonthDisplay() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            document.getElementById('current-month-display').textContent = `${year}年 ${month}月`;
+        }
+
+        // Switch View Mode (Month, Week, Day)
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            ['month', 'week', 'day'].forEach(m => {
+                const btn = document.getElementById(`view-btn-${m}`);
+                if (m === mode) {
+                    btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-slate-800 shadow-sm font-bold";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg transition hover:text-slate-800 font-semibold";
+                }
+            });
+            renderDashboard();
+        }
+
+        // Simulated Google Health Sync
+        function syncGoogleHealth() {
+            const statusText = document.getElementById('sync-status');
+            const icon = document.getElementById('sync-icon');
+
+            statusText.textContent = '同期中...';
+            icon.classList.add('animate-spin');
+
+            setTimeout(() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (!logsData[todayStr]) {
+                    logsData[todayStr] = { date: todayStr };
+                }
+                logsData[todayStr].steps = Math.floor(Math.random() * 4000) + 6000;
+                logsData[todayStr].weight = (65 + Math.random() * 2).toFixed(1);
+
+                statusText.textContent = '同期完了!';
+                icon.classList.remove('animate-spin');
+
+                renderDashboard();
+
+                setTimeout(() => {
+                    statusText.textContent = 'Google Health 連携';
+                }, 3000);
+            }, 1200);
+        }
+
+        function fillMockHealthData() {
+            document.getElementById('form-steps').value = Math.floor(Math.random() * 5000) + 5000;
+            document.getElementById('form-weight').value = (64.0 + Math.random() * 2).toFixed(1);
+        }
+
+        function previewImage(input, previewId) {
+            const previewContainer = document.getElementById(previewId);
+            const imgEl = previewContainer.querySelector('img');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgEl.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function saveLog(e) {
+            e.preventDefault();
+            const date = document.getElementById('form-date').value;
+            const steps = document.getElementById('form-steps').value;
+            const weight = document.getElementById('form-weight').value;
+            const asukenMemo = document.getElementById('form-asuken-memo').value;
+            const workoutMemo = document.getElementById('form-workout-memo').value;
+
+            const asukenPreview = document.querySelector('#asuken-preview img');
+            const workoutPreview = document.querySelector('#workout-preview img');
+
+            const existing = logsData[date] || {};
+
+            logsData[date] = {
+                date: date,
+                steps: steps ? parseInt(steps) : existing.steps || null,
+                weight: weight ? parseFloat(weight) : existing.weight || null,
+                asukenImg: asukenPreview.src && !asukenPreview.parentElement.classList.contains('hidden') ? asukenPreview.src : existing.asukenImg || null,
+                asukenMemo: asukenMemo || existing.asukenMemo || '',
+                workoutImg: workoutPreview.src && !workoutPreview.parentElement.classList.contains('hidden') ? workoutPreview.src : existing.workoutImg || null,
+                workoutMemo: workoutMemo || existing.workoutMemo || ''
+            };
+
+            closeModal('add-log-modal');
+            renderDashboard();
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('log-form').reset();
+            document.getElementById('asuken-preview').classList.add('hidden');
+            document.getElementById('workout-preview').classList.add('hidden');
+        }
+
+        // Filter keys by View Mode
+        function getFilteredKeys(monthKeys) {
+            if (currentViewMode === 'month') {
+                return monthKeys;
+            } else if (currentViewMode === 'week') {
+                // Return keys for the last 7 days of active current month view
+                const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                const start = new Date(end);
+                start.setDate(end.getDate() - 7);
+                return monthKeys.filter(k => {
+                    const d = new Date(k);
+                    return d >= start && d <= end;
+                });
+            } else if (currentViewMode === 'day') {
+                // Show latest recorded day or selected date
+                return monthKeys.slice(0, 1);
+            }
+            return monthKeys;
+        }
+
+        // Render Dashboard Content
+        function renderDashboard() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+
+            // Filter keys for current month
+            const monthKeys = Object.keys(logsData)
+                .filter(key => key.startsWith(monthPrefix))
+                .sort((a, b) => new Date(b) - new Date(a));
+
+            const displayKeys = getFilteredKeys(monthKeys);
+            const container = document.getElementById('logs-container');
+            container.innerHTML = '';
+
+            let totalSteps = 0;
+            let stepCount = 0;
+            let totalWeight = 0;
+            let weightCount = 0;
+            let foodCount = 0;
+            let workoutCount = 0;
+
+            // Monthly stats computation
+            monthKeys.forEach(dateKey => {
+                const item = logsData[dateKey];
+                if (item.steps) { totalSteps += item.steps; stepCount++; }
+                if (item.weight) { totalWeight += parseFloat(item.weight); weightCount++; }
+                if (item.asukenImg || item.asukenMemo) foodCount++;
+                if (item.workoutImg || item.workoutMemo) workoutCount++;
+            });
+
+            if (displayKeys.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-8 rounded-2xl border border-slate-200 text-center">
+                        <i data-lucide="file-x" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                        <p class="text-slate-500 font-medium">表示条件に該当する記録がありません。</p>
+                        <button onclick="openModal('add-log-modal')" class="mt-4 text-sm bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium">記録を投稿する</button>
+                    </div>
+                `;
+            } else {
+                displayKeys.forEach(dateKey => {
+                    const item = logsData[dateKey];
+                    const card = document.createElement('div');
+                    card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition";
+                    
+                    const dateObj = new Date(dateKey);
+                    const formattedDate = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日 (${['日','月','火','水','木','金','土'][dateObj.getDay()]})`;
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <span class="font-bold text-slate-800 flex items-center space-x-2">
+                                <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+                                <span>${formattedDate}</span>
+                            </span>
+                        </div>
+
+                        <!-- Health Data Row -->
+                        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="footprints" class="w-4 h-4 text-teal-600"></i>
+                                <span class="text-slate-500">歩数:</span>
+                                <span class="font-semibold text-slate-700">${item.steps ? item.steps.toLocaleString() + ' 歩' : '--'}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="scale" class="w-4 h-4 text-emerald-600"></i>
+                                <span class="text-slate-500">体重:</span>
+                                <span class="font-semibold text-slate-700">${item.weight ? item.weight + ' kg' : '--'}</span>
+                            </div>
+                        </div>
+
+                        <!-- Asuken Section -->
+                        ${(item.asukenImg || item.asukenMemo) ? `
+                            <div class="space-y-1.5 border-l-2 border-amber-400 pl-3 py-1">
+                                <span class="text-xs font-bold text-amber-700 flex items-center space-x-1">
+                                    <i data-lucide="utensils" class="w-3.5 h-3.5"></i>
+                                    <span>あすけん (食事)</span>
+                                </span>
+                                ${item.asukenImg ? `
+                                    <img src="${item.asukenImg}" onclick="openImageModal('${item.asukenImg}')" class="w-full h-28 object-cover rounded-lg border border-slate-100 cursor-pointer hover:opacity-95">
+                                ` : ''}
+                                ${item.asukenMemo ? `<p class="text-xs text-slate-600 bg-amber-50/50 p-2 rounded">${item.asukenMemo}</p>` : ''}
+                            </div>
+                        ` : ''}
+
+                        <!-- Workout Section -->
+                        ${(item.workoutImg || item.workoutMemo) ? `
+                            <div class="space-y-1.5 border-l-2 border-indigo-400 pl-3 py-1">
+                                <span class="text-xs font-bold text-indigo-700 flex items-center space-x-1">
+                                    <i data-lucide="dumbbell" class="w-3.5 h-3.5"></i>
+                                    <span>筋トレメモ</span>
+                                </span>
+                                ${item.workoutImg ? `
+                                    <img src="${item.workoutImg}" onclick="openImageModal('${item.workoutImg}')" class="w-full h-28 object-cover rounded-lg border border-slate-100 cursor-pointer hover:opacity-95">
+                                ` : ''}
+                                ${item.workoutMemo ? `<p class="text-xs text-slate-600 bg-indigo-50/50 p-2 rounded">${item.workoutMemo}</p>` : ''}
+                            </div>
+                        ` : ''}
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            // Update Header Stats
+            document.getElementById('stat-avg-steps').textContent = stepCount > 0 ? Math.round(totalSteps / stepCount).toLocaleString() + ' 歩' : '--';
+            document.getElementById('stat-avg-weight').textContent = weightCount > 0 ? (totalWeight / weightCount).toFixed(1) + ' kg' : '--';
+            document.getElementById('stat-food-count').textContent = foodCount + ' 日';
+            document.getElementById('stat-workout-count').textContent = workoutCount + ' 日';
+
+            lucide.createIcons();
+            updateCharts(monthKeys);
+        }
+
+        // Chart Initialization (Two Separate Charts)
+        function initCharts() {
+            // Weight Chart (Line)
+            const ctxWeight = document.getElementById('weightChart').getContext('2d');
+            weightChartInstance = new Chart(ctxWeight, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '体重 (kg)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10b981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { title: { display: true, text: 'kg' } }
+                    }
+                }
+            });
+
+            // Steps Chart (Bar)
+            const ctxSteps = document.getElementById('stepsChart').getContext('2d');
+            stepsChartInstance = new Chart(ctxSteps, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '歩数',
+                        data: [],
+                        backgroundColor: '#14b8a6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { title: { display: true, text: '歩' } }
+                    }
+                }
+            });
+        }
+
+        function updateCharts(monthKeys) {
+            if (!weightChartInstance || !stepsChartInstance) return;
+
+            const sortedKeys = [...monthKeys].sort((a, b) => new Date(a) - new Date(b));
+            const labels = sortedKeys.map(k => k.split('-')[2] + '日');
+            const weightData = sortedKeys.map(k => logsData[k].weight || null);
+            const stepsData = sortedKeys.map(k => logsData[k].steps || null);
+
+            // Update Weight Chart
+            weightChartInstance.data.labels = labels;
+            weightChartInstance.data.datasets[0].data = weightData;
+            weightChartInstance.update();
+
+            // Update Steps Chart
+            stepsChartInstance.data.labels = labels;
+            stepsChartInstance.data.datasets[0].data = stepsData;
+            stepsChartInstance.update();
+        }
+
+        // Modal Helpers
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function openImageModal(src) {
+            document.getElementById('enlarged-image').src = src;
+            openModal('image-view-modal');
+        }
+    </script>
+</body>
+</html>

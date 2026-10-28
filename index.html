@@ -152,7 +152,7 @@
     <div id="add-log-modal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden my-8">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 class="text-lg font-bold text-slate-800">今日の記録を追加 / 編集</h3>
+                <h3 id="modal-title" class="text-lg font-bold text-slate-800">記録の追加 / 編集</h3>
                 <button onclick="closeModal('add-log-modal')" class="text-slate-400 hover:text-slate-600">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
@@ -194,6 +194,9 @@
                     <input type="file" id="form-asuken-file" accept="image/*" onchange="previewImage(this, 'asuken-preview')" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200">
                     <div id="asuken-preview" class="hidden mt-2 relative">
                         <img src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+                        <button type="button" onclick="removeImagePreview('asuken-preview')" class="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-1 hover:bg-rose-600">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
                     <textarea id="form-asuken-memo" placeholder="食事に関するメモ（カロリー、PFCなど）" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs mt-2"></textarea>
                 </div>
@@ -206,6 +209,9 @@
                     <input type="file" id="form-workout-file" accept="image/*" onchange="previewImage(this, 'workout-preview')" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200">
                     <div id="workout-preview" class="hidden mt-2 relative">
                         <img src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+                        <button type="button" onclick="removeImagePreview('workout-preview')" class="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-1 hover:bg-rose-600">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
                     <textarea id="form-workout-memo" placeholder="トレーニング内容・部位のメモ" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs mt-2"></textarea>
                 </div>
@@ -215,6 +221,25 @@
                     <button type="submit" class="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm">保存する</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="delete-confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
+            <div class="flex items-center space-x-3 text-rose-600">
+                <div class="p-2 bg-rose-100 rounded-xl">
+                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">記録の削除</h3>
+            </div>
+            <p class="text-sm text-slate-600">
+                <span id="delete-date-text" class="font-semibold text-slate-800"></span> の記録を削除しますか？この操作は取り消せません。
+            </p>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button onclick="closeModal('delete-confirm-modal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg font-medium">キャンセル</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg shadow-sm">削除する</button>
+            </div>
         </div>
     </div>
 
@@ -405,6 +430,55 @@
             }
         }
 
+        function removeImagePreview(previewId) {
+            const previewContainer = document.getElementById(previewId);
+            const imgEl = previewContainer.querySelector('img');
+            imgEl.src = '';
+            previewContainer.classList.add('hidden');
+        }
+
+        function editLog(dateKey) {
+            const log = logsData[dateKey] || {};
+            
+            document.getElementById('modal-title').textContent = `${dateKey} の記録を編集`;
+            document.getElementById('form-date').value = dateKey;
+            document.getElementById('form-steps').value = log.steps || '';
+            document.getElementById('form-weight').value = log.weight || '';
+            document.getElementById('form-asuken-memo').value = log.asukenMemo || '';
+            document.getElementById('form-workout-memo').value = log.workoutMemo || '';
+
+            // Asuken image setup
+            const asukenPreview = document.getElementById('asuken-preview');
+            if (log.asukenImg) {
+                asukenPreview.querySelector('img').src = log.asukenImg;
+                asukenPreview.classList.remove('hidden');
+            } else {
+                asukenPreview.classList.add('hidden');
+            }
+
+            // Workout image setup
+            const workoutPreview = document.getElementById('workout-preview');
+            if (log.workoutImg) {
+                workoutPreview.querySelector('img').src = log.workoutImg;
+                workoutPreview.classList.remove('hidden');
+            } else {
+                workoutPreview.classList.add('hidden');
+            }
+
+            openModal('add-log-modal');
+        }
+
+        function confirmDeleteLog(dateKey) {
+            document.getElementById('delete-date-text').textContent = dateKey;
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            confirmBtn.onclick = function() {
+                delete logsData[dateKey];
+                closeModal('delete-confirm-modal');
+                renderDashboard();
+            };
+            openModal('delete-confirm-modal');
+        }
+
         function saveLog(e) {
             e.preventDefault();
             const date = document.getElementById('form-date').value;
@@ -416,16 +490,17 @@
             const asukenPreview = document.querySelector('#asuken-preview img');
             const workoutPreview = document.querySelector('#workout-preview img');
 
-            const existing = logsData[date] || {};
+            const isAsukenVisible = !document.getElementById('asuken-preview').classList.contains('hidden');
+            const isWorkoutVisible = !document.getElementById('workout-preview').classList.contains('hidden');
 
             logsData[date] = {
                 date: date,
-                steps: steps ? parseInt(steps) : existing.steps || null,
-                weight: weight ? parseFloat(weight) : existing.weight || null,
-                asukenImg: asukenPreview.src && !asukenPreview.parentElement.classList.contains('hidden') ? asukenPreview.src : existing.asukenImg || null,
-                asukenMemo: asukenMemo || existing.asukenMemo || '',
-                workoutImg: workoutPreview.src && !workoutPreview.parentElement.classList.contains('hidden') ? workoutPreview.src : existing.workoutImg || null,
-                workoutMemo: workoutMemo || existing.workoutMemo || ''
+                steps: steps ? parseInt(steps) : null,
+                weight: weight ? parseFloat(weight) : null,
+                asukenImg: isAsukenVisible && asukenPreview.src ? asukenPreview.src : null,
+                asukenMemo: asukenMemo || '',
+                workoutImg: isWorkoutVisible && workoutPreview.src ? workoutPreview.src : null,
+                workoutMemo: workoutMemo || ''
             };
 
             closeModal('add-log-modal');
@@ -489,7 +564,7 @@
                 displayKeys.forEach(dateKey => {
                     const item = logsData[dateKey];
                     const card = document.createElement('div');
-                    card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition";
+                    card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition relative group";
                     
                     const dateObj = new Date(dateKey);
                     const formattedDate = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日 (${['日','月','火','水','木','金','土'][dateObj.getDay()]})`;
@@ -500,6 +575,14 @@
                                 <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
                                 <span>${formattedDate}</span>
                             </span>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="editLog('${dateKey}')" title="編集" class="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="confirmDeleteLog('${dateKey}')" title="削除" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs">

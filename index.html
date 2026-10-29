@@ -33,38 +33,53 @@
 
     <!-- Header / Navigation -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-emerald-500 text-white p-2 rounded-xl shadow-md">
-                        <i data-lucide="activity" class="w-6 h-6"></i>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-0">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:h-16 justify-center items-center gap-2.5 sm:gap-0">
+                
+                <!-- Logo & Main Add Action -->
+                <div class="flex justify-between items-center w-full sm:w-auto">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="bg-emerald-500 text-white p-1.5 sm:p-2 rounded-xl shadow-md">
+                            <i data-lucide="activity" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                        </div>
+                        <span class="text-lg sm:text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                            FitHub Log
+                        </span>
                     </div>
-                    <span class="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                        FitHub Log
-                    </span>
+
+                    <!-- Mobile Add Button (Visible only on small screens) -->
+                    <button onclick="openModal('add-log-modal')" class="sm:hidden bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>記録追加</span>
+                    </button>
                 </div>
 
-                <!-- Google Health Real Sync Button -->
-                <div class="flex items-center space-x-3">
+                <!-- Google Health Real Sync & Data Sync Buttons -->
+                <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto space-x-2 overflow-x-auto pb-1 sm:pb-0">
                     <!-- データバックアップ・同期用ボタン（Google ドライブ連携） -->
-                    <button onclick="saveToGoogleDrive()" title="Googleドライブへ保存" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300">
-                        <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-blue-600"></i>
-                        <span class="hidden sm:inline">クラウド保存</span>
-                    </button>
-                    <button onclick="loadFromGoogleDrive()" title="Googleドライブから同期" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300">
-                        <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-indigo-600"></i>
-                        <span class="hidden sm:inline">クラウド読み込み</span>
+                    <div class="flex items-center space-x-1.5">
+                        <button onclick="saveToGoogleDrive()" title="Googleドライブへ保存" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300 shrink-0">
+                            <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>保存</span>
+                        </button>
+                        <button onclick="loadFromGoogleDrive()" title="Googleドライブから同期" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300 shrink-0">
+                            <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span>読込</span>
+                        </button>
+                    </div>
+
+                    <button id="sync-health-btn" onclick="handleGoogleFitSync()" class="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300 shrink-0">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-600" id="sync-icon"></i>
+                        <span id="sync-status">Google同期</span>
                     </button>
 
-                    <button id="sync-health-btn" onclick="handleGoogleFitSync()" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition border border-slate-300">
-                        <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-600" id="sync-icon"></i>
-                        <span id="sync-status">Google Health 本番同期</span>
-                    </button>
-                    <button onclick="openModal('add-log-modal')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition flex items-center space-x-1">
+                    <!-- Desktop Add Button (Hidden on small screens) -->
+                    <button onclick="openModal('add-log-modal')" class="hidden sm:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition items-center space-x-1 shrink-0">
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>記録を追加</span>
                     </button>
                 </div>
+
             </div>
         </div>
     </header>

@@ -349,9 +349,8 @@
         function closeModal(modalId) {
             document.getElementById(modalId).classList.add('hidden');
         }
-
-        // 画像の自動圧縮（リサイズ）関数
-        function compressImage(base64Str, maxWidth = 800, quality = 0.7) {
+        // 画像の自動圧縮（リサイズ）関数（より強力に圧縮）
+        function compressImage(base64Str, maxWidth = 500, quality = 0.5) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.src = base64Str;
@@ -371,6 +370,7 @@
                     ctx.drawImage(img, 0, 0, width, height);
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
+                img.onerror = () => resolve(base64Str);
             });
         }
 
@@ -383,8 +383,8 @@
             files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = async function(e) {
-                    // 画像を長辺800px以下・JPEG画質70%に圧縮して保存容量を節約
-                    const compressedBase64 = await compressImage(e.target.result, 800, 0.7);
+                    // 画像を長辺500px以下・JPEG画質50%に強力圧縮（約20-30KB）
+                    const compressedBase64 = await compressImage(e.target.result, 500, 0.5);
                     currentFormImages[type].push(compressedBase64);
                     loadedCount++;
                     if (loadedCount === files.length) {

@@ -46,6 +46,16 @@
 
                 <!-- Google Health Real Sync Button -->
                 <div class="flex items-center space-x-3">
+                    <!-- データバックアップ・同期用ボタン（Google ドライブ連携） -->
+                    <button onclick="saveToGoogleDrive()" title="Googleドライブへ保存" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300">
+                        <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-blue-600"></i>
+                        <span class="hidden sm:inline">クラウド保存</span>
+                    </button>
+                    <button onclick="loadFromGoogleDrive()" title="Googleドライブから同期" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-300">
+                        <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        <span class="hidden sm:inline">クラウド読み込み</span>
+                    </button>
+
                     <button id="sync-health-btn" onclick="handleGoogleFitSync()" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition border border-slate-300">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-600" id="sync-icon"></i>
                         <span id="sync-status">Google Health 本番同期</span>
@@ -256,6 +266,9 @@
         const GOOGLE_CLIENT_ID = '84961533777-9v8b9q99mf16n4gk4745alhb6sf2ius8.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read';
 
+        // ★★★ 発行した GAS のウェブアプリ URL をここに貼り付けてください ★★★
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzBJ9diZoSxlBRfGg9TyDLRdddQCB2jZoAhGko0sT0blymb92ZnZJWTveuLWHI3orI5ig/exec';
+
         let tokenClient;
         let accessToken = null;
 
@@ -302,6 +315,91 @@
                 localStorage.setItem('fithub_logs_data', JSON.stringify(logsData));
             } catch (e) {
                 console.error("データ保存エラー (容量制限などの可能性があります):", e);
+            }
+        }
+
+        // --- DATA EXPORT & IMPORT ---
+        // データをJSONファイルとしてダウンロード（PC->スマホ移行用）
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logsData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `fithub_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // JSONファイルを読み込んでデータをインポート
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedLogs = JSON.parse(e.target.result);
+                    if (typeof importedLogs === 'object') {
+                        logsData = { ...logsData, ...importedLogs };
+                        saveLogsToStorage();
+                        renderDashboard();
+                        alert('データを正常に取り込みました！');
+                    }
+                } catch (err) {
+                    alert('ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- GAS (GOOGLE APPS SCRIPT) CLOUD SYNC ---
+        // GASを使ってスプレッドシートへ全データを保存
+        async function saveToGoogleDrive() {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('YOUR_GAS_WEB_APP_URL')) {
+                alert('GASのウェブアプリURLが設定されていません。');
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(logsData)
+                });
+                const resData = await response.json();
+                if (resData.status === 'success') {
+                    alert('☁️ クラウド（GAS）へデータを保存しました！');
+                } else {
+                    throw new Error(resData.message || 'Save Failed');
+                }
+            } catch (err) {
+                console.error("GAS Save Error:", err);
+                alert('クラウドへの保存に失敗しました。');
+            }
+        }
+
+        // GASを使ってスプレッドシートから最新データを取得
+        async function loadFromGoogleDrive() {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('YOUR_GAS_WEB_APP_URL')) {
+                alert('GASのウェブアプリURLが設定されていません。');
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL);
+                const cloudLogs = await response.json();
+
+                if (cloudLogs && typeof cloudLogs === 'object') {
+                    logsData = cloudLogs;
+                    saveLogsToStorage();
+                    renderDashboard();
+                    alert('☁️ クラウド（GAS）から最新データを復元・同期しました！');
+                } else {
+                    alert('クラウド上のデータが空か不正な形式です。');
+                }
+            } catch (err) {
+                console.error("GAS Load Error:", err);
+                alert('クラウドからの同期に失敗しました。');
             }
         }
 

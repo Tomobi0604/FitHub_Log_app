@@ -111,7 +111,7 @@
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center space-x-2">
                     <i data-lucide="scale" class="w-4 h-4 text-emerald-600"></i>
-                    <span>今月の体重推移 (kg)</span>
+                    <span id="weight-chart-title">今月の体重推移 (kg)</span>
                 </h3>
                 <div class="h-56 w-full">
                     <canvas id="weightChart"></canvas>
@@ -122,7 +122,7 @@
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center space-x-2">
                     <i data-lucide="footprints" class="w-4 h-4 text-teal-600"></i>
-                    <span>今月の歩数推移 (歩)</span>
+                    <span id="steps-chart-title">今月の歩数推移 (歩)</span>
                 </h3>
                 <div class="h-56 w-full">
                     <canvas id="stepsChart"></canvas>
@@ -779,7 +779,8 @@
             document.getElementById('stat-workout-count').textContent = workoutCount + ' 日';
 
             lucide.createIcons();
-            updateCharts(monthKeys);
+            // 表示モードに応じたキー（データ）を渡してグラフを更新
+            updateCharts(displayKeys);
         }
 
         function initCharts() {
@@ -813,9 +814,9 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: '歩数',
+                        label: '歩数 (歩)',
                         data: [],
-                        backgroundColor: '#14b8a6',
+                        backgroundColor: '#0d9488',
                         borderRadius: 6
                     }]
                 },
@@ -828,13 +829,28 @@
             });
         }
 
-        function updateCharts(monthKeys) {
+        function updateCharts(displayKeys) {
             if (!weightChartInstance || !stepsChartInstance) return;
 
-            const sortedKeys = [...monthKeys].sort((a, b) => new Date(a) - new Date(b));
+            // 選択されている表示モードに合わせてグラフのタイトルを変更
+            const weightTitleEl = document.getElementById('weight-chart-title');
+            const stepsTitleEl = document.getElementById('steps-chart-title');
+            
+            if (currentViewMode === 'month') {
+                if (weightTitleEl) weightTitleEl.textContent = '今月の体重推移 (kg)';
+                if (stepsTitleEl) stepsTitleEl.textContent = '今月の歩数推移 (歩)';
+            } else if (currentViewMode === 'week') {
+                if (weightTitleEl) weightTitleEl.textContent = '今週の体重推移 (kg)';
+                if (stepsTitleEl) stepsTitleEl.textContent = '今週の歩数推移 (歩)';
+            } else if (currentViewMode === 'day') {
+                if (weightTitleEl) weightTitleEl.textContent = '今日の体重 (kg)';
+                if (stepsTitleEl) stepsTitleEl.textContent = '今日の歩数 (歩)';
+            }
+
+            const sortedKeys = [...displayKeys].sort((a, b) => new Date(a) - new Date(b));
             const labels = sortedKeys.map(k => k.split('-')[2] + '日');
-            const weightData = sortedKeys.map(k => logsData[k].weight || null);
-            const stepsData = sortedKeys.map(k => logsData[k].steps || null);
+            const weightData = sortedKeys.map(k => logsData[k] ? logsData[k].weight || null : null);
+            const stepsData = sortedKeys.map(k => logsData[k] ? logsData[k].steps || null : null);
 
             weightChartInstance.data.labels = labels;
             weightChartInstance.data.datasets[0].data = weightData;

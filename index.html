@@ -253,7 +253,7 @@
     <script>
         // --- GOOGLE API CONFIGURATION ---
         // Step 1でコピーしたクライアントIDをここに貼り付けてください
-        const GOOGLE_CLIENT_ID = '84961533777-9v8b9q99mf16n4gk4745alhb6sf2ius8.apps.googleusercontent.com';
+        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read';
 
         let tokenClient;
@@ -268,7 +268,7 @@
 
         window.onload = function() {
             lucide.createIcons();
-            initMockData();
+            loadLogsFromStorage(); // ストレージからデータを読み込み
             updateMonthDisplay();
             initCharts();
             renderDashboard();
@@ -277,6 +277,33 @@
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('form-date').value = todayStr;
         };
+
+        // --- LOCAL STORAGE DATA PERSISTENCE ---
+        // ローカルストレージからのデータ読み込み
+        function loadLogsFromStorage() {
+            const savedData = localStorage.getItem('fithub_logs_data');
+            if (savedData) {
+                try {
+                    logsData = JSON.parse(savedData);
+                } catch (e) {
+                    console.error("データ読込エラー:", e);
+                    initMockData();
+                }
+            } else {
+                // 初回起動時のみサンプルデータをセット
+                initMockData();
+                saveLogsToStorage();
+            }
+        }
+
+        // ローカルストレージへデータを保存
+        function saveLogsToStorage() {
+            try {
+                localStorage.setItem('fithub_logs_data', JSON.stringify(logsData));
+            } catch (e) {
+                console.error("データ保存エラー (容量制限などの可能性があります):", e);
+            }
+        }
 
         // Google Authentication Client Init
         function initGoogleAuth() {
@@ -356,6 +383,7 @@
                     });
                 }
 
+                saveLogsToStorage(); // 取得した健康データを保存
                 statusText.textContent = '同期完了!';
                 renderDashboard();
             } catch (err) {
@@ -473,6 +501,7 @@
             const confirmBtn = document.getElementById('confirm-delete-btn');
             confirmBtn.onclick = function() {
                 delete logsData[dateKey];
+                saveLogsToStorage(); // 削除後に保存
                 closeModal('delete-confirm-modal');
                 renderDashboard();
             };
@@ -503,6 +532,7 @@
                 workoutMemo: workoutMemo || ''
             };
 
+            saveLogsToStorage(); // 記録追加・編集後に保存
             closeModal('add-log-modal');
             renderDashboard();
         }

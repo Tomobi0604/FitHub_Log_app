@@ -287,11 +287,11 @@
                     logsData = JSON.parse(savedData);
                 } catch (e) {
                     console.error("データ読込エラー:", e);
-                    initMockData();
+                    logsData = {};
                 }
             } else {
-                // 初回起動時のみサンプルデータをセット
-                initMockData();
+                // サンプルデータ生成を廃止し、空の状態で初期化
+                logsData = {};
                 saveLogsToStorage();
             }
         }
@@ -414,6 +414,7 @@
             });
         }
 
+        // changeMonth
         function changeMonth(diff) {
             currentDate.setMonth(currentDate.getMonth() + diff);
             updateMonthDisplay();

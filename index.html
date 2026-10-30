@@ -804,6 +804,8 @@
 
         // ===== GOOGLE HEALTH API SYNC（歩数・体重）=====
         const HEALTH_LABEL = 'Google Health同期';
+        const APP_BUILD = '2026-10-30-c'; // 反映確認用（コンソールに表示）
+        console.log('FitHub build', APP_BUILD);
         function setHealthLabel(t) { document.getElementById('sync-status').textContent = t; }
 
         function initGoogleClient() {
@@ -811,6 +813,8 @@
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: GOOGLE_CLIENT_ID,
                 scope: SCOPES,
+                // 過去に許可した旧スコープ（Google Fit等）を混ぜない（混ざるとHealth APIが403 DISALLOWED_OAUTH_SCOPESで拒否する）
+                include_granted_scopes: false,
                 callback: async (tokenResponse) => {
                     if (tokenResponse.error !== undefined) {
                         console.error(tokenResponse);
@@ -832,7 +836,7 @@
             }
             if (!tokenClient) initGoogleClient();
             if (!tokenClient) { alert('Google認証ライブラリの読み込みに失敗しました。再読み込みしてください。'); return; }
-            if (accessToken === null) tokenClient.requestAccessToken({ prompt: 'consent' });
+            if (accessToken === null) tokenClient.requestAccessToken({ prompt: 'consent', include_granted_scopes: false });
             else fetchHealthData();
         }
 
@@ -845,7 +849,13 @@
             let json = null;
             try { json = JSON.parse(text); } catch (e) {}
             if (!res.ok) {
-                const msg = (json && json.error && json.error.message) || text.slice(0, 150);
+                let msg = (json && json.error && json.error.message) || text.slice(0, 150);
+                // 原因特定用：問題のスコープ名などの詳細があれば付ける
+                try {
+                    (json.error.details || []).forEach(d => {
+                        if (d.metadata && d.metadata.disallowed_scopes) msg += ` [問題のスコープ: ${d.metadata.disallowed_scopes}]`;
+                    });
+                } catch (e) {}
                 const e = new Error(`HTTP ${res.status}: ${msg}`);
                 e.code = res.status;
                 throw e;
@@ -942,7 +952,8 @@
                     if (tokenClient) { setHealthLabel('再認証中...'); tokenClient.requestAccessToken({ prompt: '' }); return; }
                 }
                 let hint = '';
-                if (err.code === 403) hint = '\n\n【確認】\n・Google CloudでGoogle Health APIを有効化したか\n・OAuth同意画面の「データアクセス」にGoogle Health APIのスコープを追加したか\n・自分のアカウントを「テストユーザー」に登録したか\n・同意画面で歩数/体重の許可にチェックを入れたか';
+                if (err.code === 403 && /disallowed OAuth scope/i.test(err.message)) { accessToken = null; hint = '\\n\\n過去に許可した古いスコープが混ざっています。ページを再読み込みしてもう一度お試しください。直らない場合は https://myaccount.google.com/permissions でこのアプリのアクセス権を削除してから再度お試しください。'; }
+                else if (err.code === 403) hint = '\n\n【確認】\n・Google CloudでGoogle Health APIを有効化したか\n・OAuth同意画面の「データアクセス」にGoogle Health APIのスコープを追加したか\n・自分のアカウントを「テストユーザー」に登録したか\n・同意画面で歩数/体重の許可にチェックを入れたか';
                 else if (err.code === 400 && /ACCOUNT_NOT_LINKED/.test(err.message)) hint = '\n\n先にスマホのGoogle Healthアプリで、このGoogleアカウントでログインしてください。';
                 else if (err.code === 429) hint = '\n\nリクエスト制限に達しました。少し待ってから再試行してください。';
                 else if (/Failed to fetch/i.test(err.message)) hint = '\n\n通信エラー、またはブラウザからのアクセスがブロックされた可能性があります（コンソールを確認してください）。';
